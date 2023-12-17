@@ -110,7 +110,7 @@ const DestTable = (props: { dests: any[] }) => {
                 <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white">
                   {dest.name}
                 </Table.Cell>
-                <Table.Cell className="blur">{dest.endpoint}</Table.Cell>
+                <Table.Cell>{dest.endpoint}</Table.Cell>
                 <Table.Cell>
                   <a
                     href={`/dashboard/destinations/${dest.id}`}

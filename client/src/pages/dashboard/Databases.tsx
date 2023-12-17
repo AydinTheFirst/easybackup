@@ -26,7 +26,7 @@ export const Databases = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const data = new FormData(e.target as HTMLFormElement);
-    const res = await rest.put(Routes.Databases(), data);
+    const res = await rest.put(Routes.Databases(id), data);
     if (!res.ok) return rest.error(res);
     location.reload();
   };
@@ -138,7 +138,7 @@ export const Databases = () => {
                 <TextInput
                   id="connectionURL"
                   name="connectionURL"
-                  type="password"
+                  type="text"
                   defaultValue={data.connectionURL}
                   placeholder="connection url"
                   required
