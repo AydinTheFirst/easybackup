@@ -7,6 +7,7 @@ import { APIError } from "./helper.router";
 import { IDatabase, dbModel } from "../helpers/schemas/db";
 import { destModel } from "../helpers/schemas/dest";
 import { backupManager } from "..";
+import { mode } from "crypto-js";
 
 const router = express.Router();
 export const DBRouter = router;
@@ -96,7 +97,7 @@ router.delete("/:id", isLoggedIn, async (req, res) => {
   res.send({ message: "OK" });
 });
 
-router.post("/backups/:id", isLoggedIn, async (req, res) => {
+router.post("/:id/backups", isLoggedIn, async (req, res) => {
   const modelId = req.params.id;
   const { id } = req.user as IUser;
 
@@ -123,9 +124,9 @@ router.post("/backups/:id", isLoggedIn, async (req, res) => {
   }
 });
 
-router.delete("/backups/:id", isLoggedIn, async (req, res) => {
-  const bid = req.params.id;
-  const modelId = req.body.modelId;
+router.delete("/:id/backups", isLoggedIn, async (req, res) => {
+  const modelId = req.params.id;
+  const bid = req.body.id;
   const { id } = req.user as IUser;
 
   if (!bid) return APIError(res, "Unknown backup id");

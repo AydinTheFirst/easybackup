@@ -9,6 +9,19 @@ export const Routes = {
     ResetPassword: "/settings/resetPassword",
     UpdateProfile: "/settings/updateProfile",
   },
-  Dests: "/dests",
-  DB: "/databases",
+
+  Databases: (id?: string) => {
+    if (id) return `/databases/${id}`;
+    return "/databases";
+  },
+
+  Destinations: (id?: string) => {
+    if (id) return `/destinations/${id}`;
+    return "/destinations";
+  },
+
+  Backups: (id?: string) => {
+    if (id) return `/databases/backups/${id}`;
+    return "/databases/backups";
+  },
 };

@@ -1,9 +1,7 @@
 import {
   DeleteObjectCommand,
   GetBucketAclCommand,
-  PutObjectCommand,
   S3,
-  S3Client,
 } from "@aws-sdk/client-s3";
 
 import { v4 } from "uuid";
@@ -26,7 +24,7 @@ export class BackupManager {
   constructor() {
     this.backupDir = "./src/backups";
 
-    this.maxBackups = 10;
+    this.maxBackups = 3;
     this.maxLogs = 50;
 
     this.s3 = new S3Manager(this);
@@ -108,7 +106,7 @@ export class BackupManager {
     return backups.filter((b) => b.id !== id);
   };
 
-  createZip = async (data: any[]) => {
+  createZip = async (data: any[], dirName: string) => {
     const zip = new AdmZip();
 
     for (const c of data) {
@@ -119,7 +117,7 @@ export class BackupManager {
       );
     }
 
-    const target = `./src/backups/${v4()}_${Date.now()}.zip`;
+    const target = `./src/backups/${dirName}_${Date.now()}.zip`;
 
     zip.writeZip(target);
 
@@ -201,6 +199,17 @@ class S3Manager {
 
     return await client.send(command);
   };
+
+  getFile = async (dest: IDest, Key: string) => {
+    const client = this._createStorageClient(dest);
+
+    const res = await client.getObject({
+      Bucket: dest.bucket,
+      Key,
+    });
+
+    return res.Body;
+  };
 }
 
 class MongoManager {
@@ -222,9 +231,9 @@ class MongoManager {
       arr.push({ name: c.name, data });
     }
 
-    const target = await this.base.createZip(arr);
+    const target = await this.base.createZip(arr, database.name);
 
-    const fileName = database.id + "/" + Date.now() + ".zip";
+    const fileName = database.name + "_" + v4() + "/" + Date.now() + ".zip";
     const key = await this.base.s3.uploadFile(dest, target, fileName);
 
     return key;

@@ -14,11 +14,11 @@ export const Databases = () => {
   const [dests, setDests] = useState<any[any] | null>(null);
 
   const fetchData = async () => {
-    const res = await rest.get(Routes.DB + "/" + id, {});
+    const res = await rest.get(Routes.Databases(id), {});
     if (!res.ok) return rest.error(res);
     setData(res.data);
 
-    const res2 = await rest.get(Routes.Dests, {});
+    const res2 = await rest.get(Routes.Destinations(), {});
     if (!res2.ok) return rest.error(res2);
     setDests(res2.data);
   };
@@ -26,7 +26,7 @@ export const Databases = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const data = new FormData(e.target as HTMLFormElement);
-    const res = await rest.put(Routes.DB + "/" + id, data);
+    const res = await rest.put(Routes.Databases(), data);
     if (!res.ok) return rest.error(res);
     location.reload();
   };
@@ -37,7 +37,7 @@ export const Databases = () => {
 
     const force = confirm("Do you want to remove all backups from cloud?");
 
-    const res = await rest.delete(Routes.DB + "/" + id, {
+    const res = await rest.delete(Routes.Databases(id), {
       force,
     });
 
@@ -171,7 +171,7 @@ const BackupTable = (props: { backups: any[] }) => {
   const { backups } = props;
 
   const handlePost = async () => {
-    const res = await rest.post(Routes.DB + "/backups/" + id, {});
+    const res = await rest.post(Routes.Backups(), {});
 
     if (!res.ok) return rest.error(res);
 
@@ -182,7 +182,7 @@ const BackupTable = (props: { backups: any[] }) => {
     const ok = confirm("Are you sure you want to delete this backup?");
     if (!ok) return;
 
-    const res = await rest.delete(Routes.DB + "/backups/" + bid, {
+    const res = await rest.delete(Routes.Backups(bid), {
       modelId: id,
     });
 

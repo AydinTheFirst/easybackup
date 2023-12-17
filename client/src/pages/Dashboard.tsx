@@ -26,11 +26,11 @@ export const Dashboard = () => {
   const [databases, setDatabases] = useState<any[] | null>(null);
 
   const fetchData = async () => {
-    const res = await rest.get(Routes.Dests, {});
+    const res = await rest.get(Routes.Destinations(), {});
     if (!res.ok) return rest.error(res);
     setDests(res.data);
 
-    const res2 = await rest.get(Routes.DB, {});
+    const res2 = await rest.get(Routes.Databases(), {});
     if (!res2.ok) return rest.error(res2);
     setDatabases(res2.data);
   };
@@ -185,7 +185,7 @@ const DbModal = (props: {
     e.preventDefault();
     setLoading(true);
     const data = new FormData(e.target as HTMLFormElement);
-    const res = await rest.post(Routes.DB, data);
+    const res = await rest.post(Routes.Databases(), data);
     if (!res.ok) {
       setLoading(false);
       return rest.error(res);
@@ -279,7 +279,7 @@ const DestModal = (props: { openModal: boolean; setOpenModal: any }) => {
     e.preventDefault();
     setLoading(true);
     const data = new FormData(e.target as HTMLFormElement);
-    const res = await rest.post(Routes.Dests, data);
+    const res = await rest.post(Routes.Destinations(), data);
 
     if (!res.ok) {
       setLoading(false);

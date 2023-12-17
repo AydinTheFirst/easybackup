@@ -11,7 +11,7 @@ export const router = app;
 
 router.use("/auth", AuthRouter);
 router.use("/settings", SettingsRouter);
-router.use("/dests", DestRouter);
+router.use("/destinations", DestRouter);
 router.use("/databases", DBRouter);
 
 router.get("/", (req, res) => {

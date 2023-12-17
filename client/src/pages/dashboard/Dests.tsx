@@ -13,7 +13,7 @@ export const Destinations = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const fetchData = async () => {
-    const res = await rest.get(Routes.Dests + "/" + id, {});
+    const res = await rest.get(Routes.Destinations(id), {});
 
     if (!res.ok) return rest.error(res);
 
@@ -30,7 +30,7 @@ export const Destinations = () => {
     setLoading(true);
     const data = new FormData(e.target as HTMLFormElement);
 
-    const res = await rest.put(Routes.Dests + "/" + id, data);
+    const res = await rest.put(Routes.Destinations(id), data);
 
     if (!res.ok) {
       setLoading(false);
@@ -44,7 +44,7 @@ export const Destinations = () => {
     const ok = confirm("Are you sure you want to delete this destination?");
     if (!ok) return;
 
-    const res = await rest.delete(Routes.Dests + "/" + id, {});
+    const res = await rest.delete(Routes.Destinations(id), {});
 
     if (!res.ok) return rest.error(res);
 
