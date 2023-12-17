@@ -1,8 +1,4 @@
-import {
-  DeleteObjectCommand,
-  GetBucketAclCommand,
-  S3,
-} from "@aws-sdk/client-s3";
+import { S3 } from "@aws-sdk/client-s3";
 
 import { v4 } from "uuid";
 import fs from "fs";
@@ -153,11 +149,11 @@ class S3Manager {
   _verifyStorageClient = async (data: IDest) => {
     const client = this._createStorageClient(data);
 
-    const cmd = new GetBucketAclCommand({
+    const res = await client.getBucketAcl({
       Bucket: data.bucket,
     });
 
-    await client.send(cmd);
+    await res;
   };
 
   _createStorageClient = (data: IDest) => {
@@ -191,13 +187,14 @@ class S3Manager {
   };
 
   deleteFile = async (dest: IDest, Key: string) => {
-    const command = new DeleteObjectCommand({
+    const client = this._createStorageClient(dest);
+
+    const res = await client.deleteObject({
       Bucket: dest.bucket,
       Key,
     });
-    const client = this._createStorageClient(dest);
 
-    return await client.send(command);
+    return res;
   };
 
   getFile = async (dest: IDest, Key: string) => {
