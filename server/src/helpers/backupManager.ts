@@ -1,95 +1,77 @@
-import { S3 } from "@aws-sdk/client-s3";
-
-import { v4 } from "uuid";
-import fs from "fs";
-import mongoose from "mongoose";
-import AdmZip from "adm-zip";
+import { IDatabase, IDest, dbModel, destModel } from "@/mongodb";
+import Easybackup from "easybackup.js";
 import cron from "node-cron";
+import fs from "node:fs";
+import { S3 } from "@aws-sdk/client-s3";
+import { randomUUID } from "node:crypto";
 
-// Types
-import { IDest, destModel } from "./schemas/dest";
-import { IDatabase, dbModel } from "./schemas/db";
-
-/** Base backup manager */
 export class BackupManager {
-  backupDir: string;
-  maxBackups: number;
-  maxLogs: number;
+  private dir: string;
+  private maxBackup: number;
+  private maxLogs: number;
+
   s3: S3Manager;
-  mongo: MongoManager;
   constructor() {
-    this.backupDir = "./src/backups";
-
-    this.maxBackups = 3;
-    this.maxLogs = 50;
-
+    this.dir = "./public/backups";
+    this.maxBackup = 3;
+    this.maxLogs = 30;
     this.s3 = new S3Manager(this);
-    this.mongo = new MongoManager(this);
-
     cron.schedule("0 0,12 * * * ", this.backupAll);
   }
 
-  backupAll = async () => {
-    // Fetch all databases and destinations
-    const allDatabases = await dbModel.find();
-    const allDestinations = await destModel.find();
-
-    // Run backup operations concurrently for each database
-    await Promise.all(
-      allDatabases.map(async (database) => {
-        // Find the corresponding destination for the current database
-        const destination = allDestinations.find(
-          (dest) => dest.id === database.destination
-        );
-
-        // If there's no destination or the database is not enabled, skip the backup
-        if (!destination || !database.enabled) return;
-
-        // Perform the backup
-        try {
-          const backupResult = await this.backup(database, destination);
-          database.backups.push({
-            id: v4(),
-            date: Date.now(),
-            dest: backupResult as string,
-          });
-
-          this.log(
-            database,
-            `Cron Job | Backup is created and uploaded to ${destination.name}`
-          );
-
-          await database.save();
-        } catch (error) {
-          this.log(database, String(error));
-        }
-      })
-    );
+  backupAll = () => {
+    dbModel.find().then((dbs) => {
+      dbs.forEach((db) => {
+        this.backup(db.id);
+      });
+    });
   };
 
-  backup = async (db: IDatabase, dest: IDest) => {
-    const database = await this.findDatabase(db.id);
+  async backup(dbId: string) {
+    const { db, dest } = await this.findDb(dbId);
+    if (!db || !dest) throw new Error("Database is not found!");
 
-    if (db.backups.length >= this.maxBackups) {
-      if (!database) throw new Error("Database is not found!");
+    let outFile = "";
 
-      const oldest = this.getOldestBackup(database.backups);
-      database.backups = this.removeBackup(database.backups, oldest.id);
+    switch (db.type) {
+      case "mongodb":
+        outFile = await Easybackup.mongodb.dump(db.connectionURL, this.dir);
+        break;
+      default:
+        throw new Error("Unknown database type");
+    }
+
+    const key = `${db.name}_${db.id}/${new Date()}.zip`;
+
+    await this.s3.uploadFile(dest, outFile, key);
+
+    if (db.backups.length > this.maxBackup) {
+      const oldest = this.getOldestBackup(db.backups);
       await this.s3.deleteFile(dest, oldest.dest);
-      await database.save();
+      db.backups = db.backups.filter((b) => b.id !== oldest.id);
     }
 
-    if (db.type === "mongodb") {
-      const s = await this.mongo.backup(db, dest);
-      this.log(db, `Backup is created and uploaded to ${dest.name}`);
-      return s;
-    } else {
-      throw new Error("Undefined db type!");
-    }
-  };
+    const backup = {
+      date: Date.now(),
+      dest: key,
+      id: randomUUID(),
+    };
+    db.backups.push(backup);
 
-  findDatabase = async (id: string) => {
-    return await dbModel.findOne({ id });
+    this.log(db, `Backup is created and uploaded to ${dest.name}`);
+
+    await db.save();
+
+    return outFile;
+  }
+
+  findDb = async (id: string) => {
+    const db = await dbModel.findOne({ id });
+    const dest = await destModel.findOne({ id: db?.destination });
+    return {
+      db,
+      dest,
+    };
   };
 
   getOldestBackup = (backups: IDatabase["backups"]) => {
@@ -98,45 +80,22 @@ export class BackupManager {
     })[0];
   };
 
-  removeBackup = (backups: IDatabase["backups"], id: string) => {
-    return backups.filter((b) => b.id !== id);
-  };
-
-  createZip = async (data: any[], dirName: string) => {
-    const zip = new AdmZip();
-
-    for (const c of data) {
-      zip.addFile(
-        `${c.name}_${Date.now()}.json`,
-        Buffer.from(JSON.stringify(c.data)),
-        "Created with easybackup"
-      );
-    }
-
-    const target = `./src/backups/${dirName}_${Date.now()}.zip`;
-
-    zip.writeZip(target);
-
-    return target;
-  };
-
-  log = async (database: IDatabase, log: string) => {
-    const db = await this.findDatabase(database.id);
-
-    if (!db) return;
-
-    if (db.logs.length >= this.maxLogs) {
-      db.logs = db.logs.slice(1);
-    }
-
+  log = async (db: IDatabase, message: string) => {
     db.logs.push({
       date: Date.now(),
-      message: log,
+      message,
     });
 
-    await db.save();
+    db.logs = db.logs.slice(0, this.maxLogs);
+  };
 
-    return this;
+  verifyDB = async (db: IDatabase) => {
+    switch (db.type) {
+      case "mongodb":
+        return await Easybackup.mongodb.verify(db.connectionURL);
+      default:
+        throw new Error("Unknown database type");
+    }
   };
 }
 
@@ -146,17 +105,17 @@ class S3Manager {
     this.base = base;
   }
 
-  _verifyStorageClient = async (data: IDest) => {
-    const client = this._createStorageClient(data);
+  _verify = async (data: IDest) => {
+    const client = this._create(data);
 
     const res = await client.getBucketAcl({
       Bucket: data.bucket,
     });
 
-    await res;
+    return res;
   };
 
-  _createStorageClient = (data: IDest) => {
+  _create = (data: IDest) => {
     const client = new S3({
       endpoint: data.endpoint,
       region: data.region,
@@ -172,7 +131,7 @@ class S3Manager {
   uploadFile = async (dest: IDest, src: string, Key: string) => {
     const file = fs.readFileSync(src);
 
-    const client = this._createStorageClient(dest);
+    const client = this._create(dest);
 
     await client.putObject({
       Key,
@@ -187,7 +146,7 @@ class S3Manager {
   };
 
   deleteFile = async (dest: IDest, Key: string) => {
-    const client = this._createStorageClient(dest);
+    const client = this._create(dest);
 
     const res = await client.deleteObject({
       Bucket: dest.bucket,
@@ -198,54 +157,21 @@ class S3Manager {
   };
 
   getFile = async (dest: IDest, Key: string) => {
-    const client = this._createStorageClient(dest);
+    const client = this._create(dest);
 
-    const res = await client.getObject({
+    const { Body } = await client.getObject({
       Bucket: dest.bucket,
       Key,
     });
 
-    return res.Body;
-  };
-}
+    if (!Body) throw new Error("File is not found!");
 
-class MongoManager {
-  base: BackupManager;
-  constructor(base: BackupManager) {
-    this.base = base;
-  }
+    const bytes = await Body.transformToByteArray();
 
-  backup = async (database: IDatabase, dest: IDest) => {
-    const mongo = await this.connect(database.connectionURL);
-    const db = mongo.db;
+    const f = `public/backups/${randomUUID()}.zip`;
 
-    const collections = await db.listCollections().toArray();
+    fs.writeFileSync(f, Buffer.from(bytes));
 
-    const arr: any[] = [];
-
-    for (const c of collections) {
-      const data = await db.collection(c.name).find().toArray();
-      arr.push({ name: c.name, data });
-    }
-
-    const target = await this.base.createZip(arr, database.name);
-
-    const fileName = database.name + "_" + v4() + "/" + Date.now() + ".zip";
-    const key = await this.base.s3.uploadFile(dest, target, fileName);
-
-    return key;
-  };
-
-  connect = (url: string): Promise<mongoose.Connection> => {
-    const conn = mongoose.createConnection(url);
-    return new Promise((resolve, reject) => {
-      conn.on("error", (error) => {
-        reject(error);
-      });
-
-      conn.on("connected", () => {
-        resolve(conn);
-      });
-    });
+    return f;
   };
 }

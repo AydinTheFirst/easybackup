@@ -1,13 +1,13 @@
 import express from "express";
-import { v4 } from "uuid";
 
 import { isLoggedIn } from "../helpers/passport";
-import { destModel } from "../helpers/schemas/dest";
-import { IUser } from "../helpers/schemas/user";
+import { destModel } from "../mongodb/schemas/dest";
+import { IUser } from "../mongodb/schemas/user";
 import { APIError } from "./helper.router";
 
 import { backupManager } from "..";
-import { dbModel } from "../helpers/schemas/db";
+import { dbModel } from "../mongodb/schemas/db";
+import { uuid } from "@/helpers/utils";
 
 const router = express.Router();
 export const DestRouter = router;
@@ -33,10 +33,10 @@ router.post("/", isLoggedIn, async (req, res) => {
   const data = req.body;
 
   try {
-    await backupManager.s3._verifyStorageClient(data);
+    await backupManager.s3._verify(data);
 
     await destModel.create({
-      id: v4(),
+      id: uuid(),
       ownerId: id,
       ...req.body,
     });
@@ -60,7 +60,7 @@ router.put("/:id", isLoggedIn, async (req, res) => {
 
   // Verfiy
   try {
-    await backupManager.s3._verifyStorageClient(data);
+    await backupManager.s3._verify(data);
 
     Object.assign(model, data);
     await model.save();

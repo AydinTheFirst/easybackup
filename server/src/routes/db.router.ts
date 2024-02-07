@@ -1,16 +1,26 @@
 import express from "express";
-import { v4 } from "uuid";
 
 import { isLoggedIn } from "../helpers/passport";
-import { IUser } from "../helpers/schemas/user";
+import { IUser } from "../mongodb/schemas/user";
 import { APIError } from "./helper.router";
-import { IDatabase, dbModel } from "../helpers/schemas/db";
-import { destModel } from "../helpers/schemas/dest";
-import { backupManager } from "..";
-import { mode } from "crypto-js";
+import { dbModel } from "../mongodb/schemas/db";
+import { destModel } from "../mongodb/schemas/dest";
+import { uuid } from "@/helpers/utils";
+import { BackupsRouter } from "./backups.router";
+
+import { backupManager } from "@";
 
 const router = express.Router();
-export const DBRouter = router;
+export { router as DBRouter };
+
+router.use(
+  "/:id/backups",
+  (req, res, next) => {
+    req.dbId = req.params.id;
+    next();
+  },
+  BackupsRouter
+);
 
 router.get("/", isLoggedIn, async (req, res) => {
   const { id } = req.user as IUser;
@@ -36,13 +46,13 @@ router.post("/", isLoggedIn, async (req, res) => {
   const data = req.body;
 
   try {
-    await verifyDB(data);
+    await backupManager.verifyDB(data);
   } catch (error) {
     return APIError(res, String(error));
   }
 
   const db = await dbModel.create({
-    id: v4(),
+    id: uuid(),
     ownerId: id,
     ...req.body,
   });
@@ -58,7 +68,7 @@ router.put("/:id", isLoggedIn, async (req, res) => {
   const data = req.body;
 
   try {
-    await verifyDB(data);
+    await backupManager.verifyDB(data);
   } catch (error) {
     return APIError(res, String(error));
   }
@@ -96,65 +106,3 @@ router.delete("/:id", isLoggedIn, async (req, res) => {
 
   res.send({ message: "OK" });
 });
-
-router.post("/:id/backups", isLoggedIn, async (req, res) => {
-  const modelId = req.params.id;
-  const { id } = req.user as IUser;
-
-  const model = await dbModel.findOne({ id: modelId, ownerId: id });
-  if (!model) return APIError(res, "Model is not found!");
-
-  const dest = await destModel.findOne({ id: model.destination });
-  if (!dest) return APIError(res, "Destination is not found!");
-
-  try {
-    const v = await backupManager.backup(model, dest);
-
-    model.backups.push({
-      date: Date.now(),
-      dest: v as string,
-      id: v4(),
-    });
-
-    await model.save();
-
-    res.send({ message: "OK" });
-  } catch (error) {
-    return APIError(res, String(error));
-  }
-});
-
-router.delete("/:id/backups", isLoggedIn, async (req, res) => {
-  const modelId = req.params.id;
-  const bid = req.body.id;
-  const { id } = req.user as IUser;
-
-  if (!bid) return APIError(res, "Unknown backup id");
-
-  const model = await dbModel.findOne({ id: modelId, ownerId: id });
-  if (!model) return APIError(res, "Model is not found!");
-
-  const dest = await destModel.findOne({ id: model.destination });
-
-  if (dest) {
-    const backup = model.backups.find((b) => b.id === bid);
-    if (!backup) return;
-    backupManager.s3.deleteFile(dest, backup.dest);
-  }
-
-  backupManager.log(model, `Backup is removed with id ${bid}`);
-
-  model.backups = model.backups.filter((b) => b.id !== bid);
-
-  await model.save();
-
-  res.send({ message: "OK" });
-});
-
-const verifyDB = async (data: IDatabase) => {
-  switch (data.type) {
-    case "mongodb":
-      await backupManager.mongo.connect(data.connectionURL);
-      break;
-  }
-};

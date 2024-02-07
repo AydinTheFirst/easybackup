@@ -9,10 +9,11 @@
 
 body {
   height: 100vh;
+  @apply bg-gray-100 dark:bg-gray-900;
 }
 
-label {
-  user-select: none;
+main#app {
+  @apply py-10 dark:text-white;
 }
 
 .colored {
@@ -89,7 +90,7 @@ label {
   width: 300px;
   padding: 1rem;
   visibility: hidden;
-  @apply shadow p-3 dark:text-white rounded bg-slate-50 dark:bg-slate-800;
+  @apply rounded bg-slate-50 p-3 shadow dark:bg-slate-800 dark:text-white;
 }
 
 .toast.show {
@@ -98,11 +99,11 @@ label {
 }
 
 .toast-header {
-  @apply flex items-center justify-between mb-3;
+  @apply mb-3 flex items-center justify-between;
 }
 
 .toast-header span {
-  @apply flex gap-1 text-base font-semibold items-center;
+  @apply flex items-center gap-1 text-base font-semibold;
 }
 
 .toast-header button {
@@ -116,4 +117,9 @@ label {
   to {
     opacity: 1;
   }
+}
+
+.backup-dest ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }

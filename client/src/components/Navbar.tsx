@@ -1,34 +1,23 @@
 import { Button, Navbar } from "flowbite-react";
-import { useEffect, useState } from "react";
-import { rest } from "../utils/REST";
-import { Routes } from "../utils/Routes";
+import { useEffect } from "react";
 
 export const NavbarComponent = () => {
-  const [user, setUser] = useState<any | null>(null);
-
-  const fetchUser = async () => {
-    const res = await rest.get(Routes.Auth.Me, {});
-    if (!res.ok)
-      return location.replace(`/login?redirectTo=${location.pathname}`);
-    setUser(res.data);
-  };
-
-  useEffect(() => {
-    const navbar = document.getElementById("navbar");
-    if (navbar) document.body.style.paddingTop = navbar.clientHeight + "px";
-    if (!user) fetchUser();
-  }, [user]);
-
   const logout = async () => {
     localStorage.removeItem("token");
     window.location.href = "/";
   };
 
+  useEffect(() => {
+    const navbar = document.getElementById("navbar");
+    const height = navbar?.offsetHeight;
+    document.body.style.paddingTop = `${height}px`;
+    return () => {
+      document.body.style.paddingTop = "0";
+    };
+  }, []);
+
   return (
-    <Navbar
-      id="navbar"
-      className="py-5 px-10 border-b fixed z-10 w-full top-0 left-0"
-    >
+    <Navbar id="navbar" className="border-b fixed z-10 w-full top-0 left-0">
       <Navbar.Brand href="/">
         <img src="/logo.png" alt="logo" width={40} />
         <span className="self-center whitespace-nowrap text-xl font-bold dark:text-white">

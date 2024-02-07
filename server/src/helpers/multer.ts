@@ -1,14 +1,14 @@
-// @ts-ignore: Could not find a declaration file for module
 import multer from "multer";
-// @ts-ignore: Could not find a declaration file for module
-import { v4 as uuid } from "uuid";
-import * as fs from "fs";
+import fs from "node:fs";
+import { uuid } from "./utils";
 
-const dir = fs.existsSync("uploads");
-if (!dir) fs.mkdirSync("uploads");
+const folder = "public";
+
+const dir = fs.existsSync(folder);
+if (!dir) fs.mkdirSync(folder);
 
 const storage = multer.diskStorage({
-  destination: "uploads",
+  destination: folder,
   filename: (req: any, file: any, cb: Function) => {
     cb(null, uuid() + "." + file.mimetype.split("/")[1]);
   },

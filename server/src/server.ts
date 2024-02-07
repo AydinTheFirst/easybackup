@@ -8,6 +8,9 @@ import { upload } from "./helpers/multer.js";
 const PORT = 3000;
 const app = express();
 
+// Static
+app.use("/public", express.static("public"));
+
 // Init App
 app.use(cors());
 app.use(express.json());

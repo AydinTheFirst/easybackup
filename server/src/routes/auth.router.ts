@@ -1,10 +1,9 @@
 import express from "express";
 import passport from "passport";
-import { isLoggedIn } from "../helpers/passport.js";
-import { APIError } from "./helper.router.js";
-import { genToken } from "../helpers/utils.js";
-import { userModel, IUser } from "../helpers/schemas/user.js";
-import { v4 } from "uuid";
+import { isLoggedIn } from "../helpers/passport";
+import { APIError } from "./helper.router";
+import { genToken, uuid } from "../helpers/utils";
+import { userModel, IUser } from "../mongodb/schemas/user";
 
 const router = express.Router();
 
@@ -33,6 +32,7 @@ router.post("/login", (req, res) => {
       model.lastLogin.ip = String(ip);
       model.lastLogin.date = Date.now().toString();
       model.token = await genToken(); // This refreshes token for each login!
+
       // Update User
       await model.save();
 
@@ -53,11 +53,9 @@ router.post("/register", async (req, res) => {
     return APIError(res, "This username/email is already taken!");
   }
 
-  //return res.send({ ok: true });
-
   // Yeni kullanıcı verisini oluştur ve kaydet
   const newUser = await userModel.create({
-    id: v4(),
+    id: uuid(),
     createdAt: new Date(),
     displayName,
     username,

@@ -1,9 +1,10 @@
 import "dotenv/config";
-import "./helpers/mongodb.js";
+import "./mongodb";
+
 // Run server
 import "./server";
 
-import { BackupManager } from "./helpers/backupManager.js";
+import { BackupManager } from "./helpers/backupManager";
 
 export const backupManager = new BackupManager();
 
