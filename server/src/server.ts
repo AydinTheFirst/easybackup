@@ -10,6 +10,7 @@ const app = express();
 
 // Static
 app.use("/public", express.static("public"));
+app.use(express.static("../client/dist"));
 
 // Init App
 app.use(cors());

@@ -1,5 +1,3 @@
-import React from "react";
-
 export const Title = () => {
   return (
     <div className="flex items-center justify-center">

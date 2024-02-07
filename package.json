@@ -4,10 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -r \"npm:watch-*\" \"npm run dev:client\" \"npm run dev:server\"",
     "install": "cd client && pnpm install && cd ../server && pnpm install",
+    "start": "cd server && npm run start",
+    "dev": "concurrently -r \"npm:watch-*\" \"npm run dev:client\" \"npm run dev:server\"",
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
+    "build": "cd client && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
