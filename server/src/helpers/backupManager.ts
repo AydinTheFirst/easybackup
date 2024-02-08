@@ -45,10 +45,14 @@ export class BackupManager {
 
     await this.s3.uploadFile(dest, outFile, key);
 
-    if (db.backups.length > this.maxBackup) {
+    if (db.backups.length >= this.maxBackup) {
       const oldest = this.getOldestBackup(db.backups);
       await this.s3.deleteFile(dest, oldest.dest);
       db.backups = db.backups.filter((b) => b.id !== oldest.id);
+      this.log(
+        db,
+        `Backup is deleted from ${dest.name} | Reason: Max backup limit is reached`
+      );
     }
 
     const backup = {
